@@ -67,6 +67,7 @@ class BilibiliCrawler(AbstractCrawler):
         self.ip_proxy_pool = None  # 代理IP池，用于代理自动刷新
 
     async def start(self):
+        # 1 创建代理IP池
         playwright_proxy_format, httpx_proxy_format = None, None
         if config.ENABLE_IP_PROXY:
             self.ip_proxy_pool = await create_ip_pool(config.IP_PROXY_POOL_COUNT, enable_validate_ip=True)
@@ -74,6 +75,7 @@ class BilibiliCrawler(AbstractCrawler):
             playwright_proxy_format, httpx_proxy_format = utils.format_proxy_info(ip_proxy_info)
 
         async with async_playwright() as playwright:
+            # 2. 浏览器启动模式
             # 根据配置选择启动模式
             if config.ENABLE_CDP_MODE:
                 utils.logger.info("[BilibiliCrawler] 使用CDP模式启动浏览器")
@@ -94,6 +96,7 @@ class BilibiliCrawler(AbstractCrawler):
             self.context_page = await self.browser_context.new_page()
             await self.context_page.goto(self.index_url)
 
+            # 3. 客户端初始化和登录
             # Create a client to interact with the xiaohongshu website.
             self.bili_client = await self.create_bilibili_client(httpx_proxy_format)
             if not await self.bili_client.pong():
@@ -107,15 +110,16 @@ class BilibiliCrawler(AbstractCrawler):
                 await login_obj.begin()
                 await self.bili_client.update_cookies(browser_context=self.browser_context)
 
+            # 4. 多模式爬取任务
             crawler_type_var.set(config.CRAWLER_TYPE)
             if config.CRAWLER_TYPE == "search":
                 await self.search()
             elif config.CRAWLER_TYPE == "detail":
                 # Get the information and comments of the specified post
                 await self.get_specified_videos(config.BILI_SPECIFIED_ID_LIST)
-            elif config.CRAWLER_TYPE == "creator":
+            elif config.CRAWLER_TYPE == "creator":  # 获取指定作者的动态
                 if config.CREATOR_MODE:
-                    for creator_url in config.BILI_CREATOR_ID_LIST:
+                    for creator_url in config.BILI_CREATOR_ID_LIST:  # 作者ID，逐个
                         try:
                             creator_info = parse_creator_info_from_url(creator_url)
                             utils.logger.info(f"[BilibiliCrawler.start] Parsed creator ID: {creator_info.creator_id} from {creator_url}")
@@ -132,11 +136,12 @@ class BilibiliCrawler(AbstractCrawler):
     async def search(self):
         """
         search bilibili video
+
         """
         # Search for video and retrieve their comment information.
-        if config.BILI_SEARCH_MODE == "normal":
+        if config.BILI_SEARCH_MODE == "normal":  # 关键词搜索
             await self.search_by_keywords()
-        elif config.BILI_SEARCH_MODE == "all_in_time_range":
+        elif config.BILI_SEARCH_MODE == "all_in_time_range":  # 指定时间范围搜索
             await self.search_by_keywords_in_time_range(daily_limit=False)
         elif config.BILI_SEARCH_MODE == "daily_limit_in_time_range":
             await self.search_by_keywords_in_time_range(daily_limit=True)
@@ -178,7 +183,7 @@ class BilibiliCrawler(AbstractCrawler):
 
     async def search_by_keywords(self):
         """
-        search bilibili video with keywords in normal mode
+        search bilibili video with keywords in normal mode 按关键词搜索视频
         :return:
         """
         utils.logger.info("[BilibiliCrawler.search_by_keywords] Begin search bilibli keywords")
@@ -329,10 +334,10 @@ class BilibiliCrawler(AbstractCrawler):
             return
 
         utils.logger.info(f"[BilibiliCrawler.batch_get_video_comments] video ids:{video_id_list}")
-        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
+        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)  # 创建一个信号量，限制并发数量
         task_list: List[Task] = []
         for video_id in video_id_list:
-            task = asyncio.create_task(self.get_comments(video_id, semaphore), name=video_id)
+            task = asyncio.create_task(self.get_comments(video_id, semaphore), name=video_id) # 创建一个任务，获取评论
             task_list.append(task)
         await asyncio.gather(*task_list)
 
@@ -352,7 +357,7 @@ class BilibiliCrawler(AbstractCrawler):
                     video_id=video_id,
                     crawl_interval=config.CRAWLER_MAX_SLEEP_SEC,
                     is_fetch_sub_comments=config.ENABLE_GET_SUB_COMMENTS,
-                    callback=bilibili_store.batch_update_bilibili_video_comments,
+                    callback=bilibili_store.batch_update_bilibili_video_comments,  # 回调函数：添加评论给json文件
                     max_count=config.CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES,
                 )
 
@@ -368,11 +373,13 @@ class BilibiliCrawler(AbstractCrawler):
         get videos for a creator
         :return:
         """
-        ps = 30
-        pn = 1
+        ps = 30  # 每页请求的视频数量
+        pn = 1  # 开始页码
         while True:
             result = await self.bili_client.get_creator_videos(creator_id, pn, ps)
             video_bvids_list = [video["bvid"] for video in result["list"]["vlist"]]
+            # test-xuek
+            # video_bvids_list=video_bvids_list[:3]
             await self.get_specified_videos(video_bvids_list)
             if int(result["page"]["count"]) <= pn * ps:
                 break
@@ -397,20 +404,21 @@ class BilibiliCrawler(AbstractCrawler):
                 utils.logger.error(f"[BilibiliCrawler.get_specified_videos] Failed to parse video URL: {e}")
                 continue
 
-        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)
+        # 1. 并发控制
+        semaphore = asyncio.Semaphore(config.MAX_CONCURRENCY_NUM)  # 创建一个信号量，限制并发数量
         task_list = [self.get_video_info_task(aid=0, bvid=video_id, semaphore=semaphore) for video_id in bvids_list]
-        video_details = await asyncio.gather(*task_list)
+        video_details = await asyncio.gather(*task_list)  # 视频信息列表
         video_aids_list = []
         for video_detail in video_details:
             if video_detail is not None:
                 video_item_view: Dict = video_detail.get("View")
-                video_aid: str = video_item_view.get("aid")
+                video_aid: str = video_item_view.get("aid")  # 提取视频的 aid（av号）
                 if video_aid:
                     video_aids_list.append(video_aid)
-                await bilibili_store.update_bilibili_video(video_detail)
-                await bilibili_store.update_up_info(video_detail)
-                await self.get_bilibili_video(video_detail, semaphore)
-        await self.batch_get_video_comments(video_aids_list)
+                await bilibili_store.update_bilibili_video(video_detail)  # 存储视频信息（追加）
+                await bilibili_store.update_up_info(video_detail)  # 存储 UP 信息（追加）
+                await self.get_bilibili_video(video_detail, semaphore)  # 下载视频内容
+        await self.batch_get_video_comments(video_aids_list)  # 批量获取视频评论
 
     async def get_video_info_task(self, aid: int, bvid: str, semaphore: asyncio.Semaphore) -> Optional[Dict]:
         """
@@ -576,7 +584,7 @@ class BilibiliCrawler(AbstractCrawler):
         video_item_view: Dict = video_item.get("View")
         aid = video_item_view.get("aid")
         cid = video_item_view.get("cid")
-        result = await self.get_video_play_url_task(aid, cid, semaphore)
+        result = await self.get_video_play_url_task(aid, cid, semaphore)  # 获取地址
         if result is None:
             utils.logger.info("[BilibiliCrawler.get_bilibili_video] get video play url failed")
             return

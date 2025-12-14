@@ -43,10 +43,13 @@ class BiliStoreFactory:
 
     @staticmethod
     def create_store() -> AbstractStore:
+        '''
+        根据存储方式，返回存储类对象，如BiliJsonStoreImplement()
+        '''
         store_class = BiliStoreFactory.STORES.get(config.SAVE_DATA_OPTION)
         if not store_class:
             raise ValueError("[BiliStoreFactory.create_store] Invalid save option only supported csv or db or json or sqlite or mongodb or excel ...")
-        return store_class()
+        return store_class()  # 返回 store对象，如“BiliJsonStoreImplement()”
 
 
 async def update_bilibili_video(video_item: Dict):
@@ -55,51 +58,54 @@ async def update_bilibili_video(video_item: Dict):
     video_item_stat: Dict = video_item_view.get("stat")
     video_id = str(video_item_view.get("aid"))
     save_content_item = {
-        "video_id": video_id,
-        "video_type": "video",
-        "title": video_item_view.get("title", "")[:500],
-        "desc": video_item_view.get("desc", "")[:500],
-        "create_time": video_item_view.get("pubdate"),
-        "user_id": str(video_user_info.get("mid")),
-        "nickname": video_user_info.get("name"),
-        "avatar": video_user_info.get("face", ""),
-        "liked_count": str(video_item_stat.get("like", "")),
-        "disliked_count": str(video_item_stat.get("dislike", "")),
-        "video_play_count": str(video_item_stat.get("view", "")),
-        "video_favorite_count": str(video_item_stat.get("favorite", "")),
-        "video_share_count": str(video_item_stat.get("share", "")),
-        "video_coin_count": str(video_item_stat.get("coin", "")),
-        "video_danmaku": str(video_item_stat.get("danmaku", "")),
-        "video_comment": str(video_item_stat.get("reply", "")),
-        "last_modify_ts": utils.get_current_timestamp(),
-        "video_url": f"https://www.bilibili.com/video/av{video_id}",
-        "video_cover_url": video_item_view.get("pic", ""),
-        "source_keyword": source_keyword_var.get(),
+        "video_id": video_id,  # 视频唯一标识符
+        "video_type": "video",  # 内容类型，此处为视频
+        "title": video_item_view.get("title", "")[:500],  # 视频标题，最多保留500个字符
+        "desc": video_item_view.get("desc", "")[:500],  # 视频描述，最多保留500个字符
+        "create_time": video_item_view.get("pubdate"),  # 视频创建时间（发布时间）
+        "user_id": str(video_user_info.get("mid")),  # UP主用户ID
+        "nickname": video_user_info.get("name"),  # UP主昵称
+        "avatar": video_user_info.get("face", ""),  # UP主头像URL
+        "liked_count": str(video_item_stat.get("like", "")),  # 点赞数
+        "disliked_count": str(video_item_stat.get("dislike", "")),  # 点踩数
+        "video_play_count": str(video_item_stat.get("view", "")),  # 播放数
+        "video_favorite_count": str(video_item_stat.get("favorite", "")),  # 收藏数
+        "video_share_count": str(video_item_stat.get("share", "")),  # 分享数
+        "video_coin_count": str(video_item_stat.get("coin", "")),  # 投币数
+        "video_danmaku": str(video_item_stat.get("danmaku", "")),  # 弹幕数
+        "video_comment": str(video_item_stat.get("reply", "")),  # 评论数
+        "last_modify_ts": utils.get_current_timestamp(),  # 最后修改时间戳
+        "video_url": f"https://www.bilibili.com/video/av{video_id}",  # 视频链接
+        "video_cover_url": video_item_view.get("pic", ""),  # 视频封面图片URL
+        "source_keyword": source_keyword_var.get(),  # 来源关键词
     }
     utils.logger.info(f"[store.bilibili.update_bilibili_video] bilibili video id:{video_id}, title:{save_content_item.get('title')}")
-    await BiliStoreFactory.create_store().store_content(content_item=save_content_item)
+    await BiliStoreFactory.create_store().store_content(content_item=save_content_item)  #  保存内容
 
 
 async def update_up_info(video_item: Dict):
     video_item_card_list: Dict = video_item.get("Card")
     video_item_card: Dict = video_item_card_list.get("card")
     saver_up_info = {
-        "user_id": str(video_item_card.get("mid")),
-        "nickname": video_item_card.get("name"),
-        "sex": video_item_card.get("sex"),
-        "sign": video_item_card.get("sign"),
-        "avatar": video_item_card.get("face"),
-        "last_modify_ts": utils.get_current_timestamp(),
-        "total_fans": video_item_card.get("fans"),
-        "total_liked": video_item_card_list.get("like_num"),
-        "user_rank": video_item_card.get("level_info").get("current_level"),
-        "is_official": video_item_card.get("official_verify").get("type"),
+        "user_id": str(video_item_card.get("mid")),  # 用户ID
+        "nickname": video_item_card.get("name"),  # 用户昵称
+        "sex": video_item_card.get("sex"),  # 性别
+        "sign": video_item_card.get("sign"),  # 个人签名
+        "avatar": video_item_card.get("face"),  # 头像链接
+        "last_modify_ts": utils.get_current_timestamp(),  # 最后修改时间戳
+        "total_fans": video_item_card.get("fans"),  # 粉丝数量
+        "total_liked": video_item_card_list.get("like_num"),  # 获赞数量
+        "user_rank": video_item_card.get("level_info").get("current_level"),  # 用户等级
+        "is_official": video_item_card.get("official_verify").get("type"),  # 是否官方认证
     }
     utils.logger.info(f"[store.bilibili.update_up_info] bilibili user_id:{video_item_card.get('mid')}")
     await BiliStoreFactory.create_store().store_creator(creator=saver_up_info)
 
 
 async def batch_update_bilibili_video_comments(video_id: str, comments: List[Dict]):
+    '''
+    逐条添加评论到json
+    '''
     if not comments:
         return
     for comment_item in comments:
@@ -107,25 +113,28 @@ async def batch_update_bilibili_video_comments(video_id: str, comments: List[Dic
 
 
 async def update_bilibili_video_comment(video_id: str, comment_item: Dict):
+    '''
+    json添加评论信息
+    '''
     comment_id = str(comment_item.get("rpid"))
     parent_comment_id = str(comment_item.get("parent", 0))
     content: Dict = comment_item.get("content")
     user_info: Dict = comment_item.get("member")
     like_count: int = comment_item.get("like", 0)
     save_comment_item = {
-        "comment_id": comment_id,
-        "parent_comment_id": parent_comment_id,
-        "create_time": comment_item.get("ctime"),
-        "video_id": str(video_id),
-        "content": content.get("message"),
-        "user_id": user_info.get("mid"),
-        "nickname": user_info.get("uname"),
-        "sex": user_info.get("sex"),
-        "sign": user_info.get("sign"),
-        "avatar": user_info.get("avatar"),
-        "sub_comment_count": str(comment_item.get("rcount", 0)),
-        "like_count": like_count,
-        "last_modify_ts": utils.get_current_timestamp(),
+        "comment_id": comment_id,  # 评论唯一标识符
+        "parent_comment_id": parent_comment_id,  # 父评论ID，0表示一级评论
+        "create_time": comment_item.get("ctime"),  # 评论创建时间
+        "video_id": str(video_id),  # 关联的视频ID
+        "content": content.get("message"),  # 评论内容
+        "user_id": user_info.get("mid"),  # 评论用户ID
+        "nickname": user_info.get("uname"),  # 评论用户昵称
+        "sex": user_info.get("sex"),  # 评论用户性别
+        "sign": user_info.get("sign"),  # 评论用户签名
+        "avatar": user_info.get("avatar"),  # 评论用户头像
+        "sub_comment_count": str(comment_item.get("rcount", 0)),  # 子评论数量
+        "like_count": like_count,  # 点赞数量
+        "last_modify_ts": utils.get_current_timestamp(),  # 最后修改时间戳
     }
     utils.logger.info(f"[store.bilibili.update_bilibili_video_comment] Bilibili video comment: {comment_id}, content: {save_comment_item.get('content')}")
     await BiliStoreFactory.create_store().store_comment(comment_item=save_comment_item)

@@ -26,7 +26,7 @@
 from enum import Enum
 
 
-class SearchOrderType(Enum):
+class SearchOrderType(Enum):  # 搜索排序
     # 综合排序
     DEFAULT = ""
 
@@ -43,7 +43,7 @@ class SearchOrderType(Enum):
     MOST_MARK = "stow"
 
 
-class CommentOrderType(Enum):
+class CommentOrderType(Enum):  # 评论排序
     # 仅按热度
     DEFAULT = 0
 

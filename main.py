@@ -38,7 +38,7 @@ from tools.async_file_writer import AsyncFileWriter
 from var import crawler_type_var
 
 
-class CrawlerFactory:
+class CrawlerFactory:  # 爬虫工厂模式
     CRAWLERS = {
         "xhs": XiaoHongShuCrawler,
         "dy": DouYinCrawler,
@@ -51,6 +51,9 @@ class CrawlerFactory:
 
     @staticmethod
     def create_crawler(platform: str) -> AbstractCrawler:
+        '''
+        根据字符返回对应的
+        '''
         crawler_class = CrawlerFactory.CRAWLERS.get(platform)
         if not crawler_class:
             raise ValueError(
@@ -67,23 +70,26 @@ crawler: Optional[AbstractCrawler] = None
 # 副作用：无
 # 回滚策略：还原此文件。
 async def main():
-    # Init crawler
+    # 1 Init crawler
     global crawler
 
-    # parse cmd
-    args = await cmd_arg.parse_cmd()
+    # 2 parse cmd
+    args = await cmd_arg.parse_cmd()  # cmd 传参
 
-    # init db
+    # 3 init db
     if args.init_db:
         await db.init_db(args.init_db)
         print(f"Database {args.init_db} initialized successfully.")
         return  # Exit the main function cleanly
 
 
-
-    crawler = CrawlerFactory.create_crawler(platform=config.PLATFORM)
+    # 4 执行爬虫
+    # 4.1 创建爬虫对象
+    crawler = CrawlerFactory.create_crawler(platform=config.PLATFORM)  # 创建爬虫对象，如: = BilibiliCrawler()
+    # 4.2 开爬
     await crawler.start()
 
+    # 5 刷新Excel数据
     # Flush Excel data if using Excel export
     if config.SAVE_DATA_OPTION == "excel":
         try:
@@ -93,9 +99,10 @@ async def main():
         except Exception as e:
             print(f"[Main] Error flushing Excel data: {e}")
 
+    # 6 生成词云
     # Generate wordcloud after crawling is complete
     # Only for JSON save mode
-    if config.SAVE_DATA_OPTION == "json" and config.ENABLE_GET_WORDCLOUD:
+    if config.SAVE_DATA_OPTION == "json" and config.ENABLE_GET_WORDCLOUD:  # 评论词云图
         try:
             file_writer = AsyncFileWriter(
                 platform=config.PLATFORM,

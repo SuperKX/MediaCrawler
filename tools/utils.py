@@ -45,6 +45,11 @@ def init_loging_config():
 logger = init_loging_config()
 
 def str2bool(v):
+    '''
+    字符串转布尔类型
+    true： 'yes', 'true', 't', 'y', '1'
+    false： 'no', 'false', 'f', 'n', '0'
+    '''
     if isinstance(v, bool):
         return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):

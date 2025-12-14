@@ -51,6 +51,12 @@ class AsyncFileWriter:
                 await writer.writerow(item)
 
     async def write_single_item_to_json(self, item: Dict, item_type: str):
+        '''
+        将单个数据项写入JSON文件：追加到文件末尾。
+        Args:
+            item: 要写入的数据字典
+            item_type: 数据项类型，用于生成文件名
+        '''
         file_path = self._get_file_path('json', item_type)
         async with self.lock:
             existing_data = []

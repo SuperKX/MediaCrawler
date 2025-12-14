@@ -18,12 +18,12 @@
 # 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
 
 # 基础配置
-PLATFORM = "xhs"  # 平台，xhs | dy | ks | bili | wb | tieba | zhihu
-KEYWORDS = "编程副业,编程兼职"  # 关键词搜索配置，以英文逗号分隔
-LOGIN_TYPE = "qrcode"  # qrcode or phone or cookie
+PLATFORM = "bili"  # 平台，xhs | dy | ks | bili | wb | tieba | zhihu
+KEYWORDS = "iphone17,手机测评"    # "编程副业,编程兼职"  # 关键词搜索配置，以英文逗号分隔
+LOGIN_TYPE = "qrcode"  # 登录方式：qrcode(二维码) | phone(手机号) | cookie(已有cookie)
 COOKIES = ""
 CRAWLER_TYPE = (
-    "search"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
+    "creator"  # 爬取类型，search(关键词搜索) | detail(帖子详情)| creator(创作者主页数据)
 )
 # 是否开启 IP 代理
 ENABLE_IP_PROXY = False
@@ -57,7 +57,7 @@ CDP_DEBUG_PORT = 9222
 # 如果为空，系统会自动检测Chrome/Edge的安装路径
 # Windows示例: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
 # macOS示例: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-CUSTOM_BROWSER_PATH = ""
+CUSTOM_BROWSER_PATH = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"  # xuek
 
 # CDP模式下是否启用无头模式
 # 注意：即使设置为True，某些反检测功能在无头模式下可能效果不佳
@@ -96,7 +96,7 @@ CRAWLER_MAX_COMMENTS_COUNT_SINGLENOTES = 10
 
 # 是否开启爬二级评论模式, 默认不开启爬二级评论
 # 老版本项目使用了 db, 则需参考 schema/tables.sql line 287 增加表字段
-ENABLE_GET_SUB_COMMENTS = False
+ENABLE_GET_SUB_COMMENTS = True  # xuek
 
 # 词云相关
 # 是否开启生成评论词云图

@@ -1,26 +1,8 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2025 relakkes@gmail.com
-#
-# This file is part of MediaCrawler project.
-# Repository: https://github.com/NanmiCoder/MediaCrawler/blob/main/media_platform/bilibili/client.py
-# GitHub: https://github.com/NanmiCoder
-# Licensed under NON-COMMERCIAL LEARNING LICENSE 1.1
-#
-
-# 声明：本代码仅供学习和研究目的使用。使用者应遵守以下原则：
-# 1. 不得用于任何商业用途。
-# 2. 使用时应遵守目标平台的使用条款和robots.txt规则。
-# 3. 不得进行大规模爬取或对平台造成运营干扰。
-# 4. 应合理控制请求频率，避免给目标平台带来不必要的负担。
-# 5. 不得用于任何非法或不当的用途。
-#
-# 详细许可条款请参阅项目根目录下的LICENSE文件。
-# 使用本代码即表示您同意遵守上述原则和LICENSE中的所有条款。
-
-# -*- coding: utf-8 -*-
 # @Author  : relakkes@gmail.com
 # @Time    : 2023/12/2 18:44
 # @Desc    : bilibili 请求客户端
+#  B 站 API 客户端，负责所有网络请求
 import asyncio
 import json
 import random
@@ -258,7 +240,7 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
         crawl_interval: float = 1.0,
         is_fetch_sub_comments=False,
         callback: Optional[Callable] = None,
-        max_count: int = 10,
+        max_count: int = 10,  # 最大一级评论量
     ):
         """
         get video all comments include sub comments
@@ -274,7 +256,7 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
         is_end = False
         next_page = 0
         max_retries = 3
-        while not is_end and len(result) < max_count:
+        while not is_end and len(result) < max_count:  # 逐个一级评论
             comments_res = None
             for attempt in range(max_retries):
                 try:
@@ -317,7 +299,7 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
                         {await self.get_video_all_level_two_comments(video_id, comment_id, CommentOrderType.DEFAULT, 10, crawl_interval, callback)}
             if len(result) + len(comment_list) > max_count:
                 comment_list = comment_list[:max_count - len(result)]
-            if callback:  # 如果有回调函数，就执行回调函数
+            if callback:  # batch_update_bilibili_video_comments
                 await callback(video_id, comment_list)
             await asyncio.sleep(crawl_interval)
             if not is_fetch_sub_comments:
@@ -330,12 +312,12 @@ class BilibiliClient(AbstractApiClient, ProxyRefreshMixin):
         video_id: str,
         level_one_comment_id: int,
         order_mode: CommentOrderType,
-        ps: int = 10,
+        ps: int = 10,  #
         crawl_interval: float = 1.0,
         callback: Optional[Callable] = None,
     ) -> Dict:
         """
-        get video all level two comments for a level one comment
+        get video all level two comments for a level one comment  爬取二级评论
         :param video_id: 视频 ID
         :param level_one_comment_id: 一级评论 ID
         :param order_mode:
